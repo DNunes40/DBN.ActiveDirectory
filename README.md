@@ -1,2 +1,226 @@
 # DBN.ActiveDirectory
-Lightweight .NET LDAP-based Active Directory management library with user search, authentication, and group management support.
+
+Lightweight, production-ready LDAP-based Active Directory manager for .NET.
+
+`DBN.ActiveDirectory` provides a clean, async-first API for searching users, validating credentials, and managing group membership in Windows Active Directory environments.
+
+It provides functionality to:
+
+- 🔍 Search users
+- 🔐 Validate credentials
+- 👥 Check group membership
+- 📋 Retrieve group members
+- ➕➖ Add or remove users from groups
+
+---
+
+## Features
+
+- Search users by:
+  - `sAMAccountName`
+  - Email
+  - First and/or last name
+- Validate user credentials
+- Check if a user belongs to a specific group
+- Retrieve members of a specific group
+- Retrieve all groups a user belongs to
+- Add and remove users from groups
+
+---
+
+## Created by
+
+Daniel Nunes  
+📧 dbnunesg40@hotmail.com
+
+---
+
+## Requirements
+
+- Windows OS
+- Uses:
+  - `System.DirectoryServices`
+  - `System.DirectoryServices.AccountManagement`
+
+> ⚠ Ensure the service account (if used) has sufficient permissions in Active Directory.
+
+---
+
+# Dependency Injection Setup
+
+## Default Registration
+
+Uses the application identity:
+
+```csharp
+services.AddSingleton<IActiveDirectoryManager, ActiveDirectoryManager>();
+```
+
+---
+
+## With Domain Only
+
+```csharp
+services.AddSingleton<IActiveDirectoryManager>(provider =>
+{
+    var domain = "myDomain";
+    return new ActiveDirectoryManager(domain);
+});
+
+//OR
+
+services.AddSingleton<IActiveDirectoryManager>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var domain = configuration["ActiveDirectory:Domain"];
+    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
+});
+```
+
+---
+
+## With Service Account Credentials
+
+> ⚠ Do NOT hardcode credentials in production.  
+> Use configuration providers, environment variables, or secure vaults.
+
+```csharp
+services.AddSingleton<IActiveDirectoryManager>(provider =>
+{
+    var domain = "myDomain";
+    var serviceAccount = "myServiceAccount";
+    var accountPassword = "myStrongPassword123!";
+    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
+});
+
+//OR
+
+services.AddSingleton<IActiveDirectoryManager>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var domain = configuration["ActiveDirectory:Domain"];
+    var serviceAccount = configuration["ActiveDirectory:ServiceAccount"];
+    var accountPassword = configuration["ActiveDirectory:Password"];
+    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
+});
+```
+
+---
+
+# Usage Examples
+
+## Search User by sAMAccountName
+
+```csharp
+var user = await _activeDirectoryManager.FindUserBySamAccountName("USER_XX");
+
+if (user != null)
+{
+    Console.WriteLine($"{user.FirstName} {user.LastName} - {user.Email}");
+}
+```
+
+---
+
+## Search User by Email
+
+```csharp
+var user = await _activeDirectoryManager.FindUserByEmail("user_xx@email.com");
+
+if (user != null)
+{
+    Console.WriteLine($"{user.FirstName} {user.LastName}");
+}
+```
+
+---
+
+## Search Users by Name
+
+```csharp
+// By first name
+var users = await _activeDirectoryManager.FindUserByName(firstName: "John");
+
+// By last name
+var users = await _activeDirectoryManager.FindUserByName(lastName: "Smith");
+
+// By first and last name
+var users = await _activeDirectoryManager.FindUserByName("John", "Smith");
+
+foreach (var user in users)
+{
+    Console.WriteLine($"{user.FirstName} {user.LastName}");
+}
+```
+
+---
+
+## Validate User Password
+
+```csharp
+bool isValid = await _activeDirectoryManager.ValidateCredentials("USER_XX", "SuperSecretPassword!");
+
+Console.WriteLine(isValid ? "Password is valid ✅" : "Password is invalid ❌");
+```
+
+---
+
+## Check Group Membership
+
+```csharp
+bool isMember = await _activeDirectoryManager.IsUserMemberOfGroup("USER_XX", "GroupA");
+
+Console.WriteLine(isMember ? "User is a member." : "User is not a member.");
+```
+
+---
+
+## Retrieve Members of a Group
+
+```csharp
+var members = await _activeDirectoryManager.GetGroupMembers("GroupA");
+
+foreach (var member in members)
+{
+    Console.WriteLine($"{member.FirstName} {member.LastName}");
+}
+```
+
+---
+
+## Get All Groups of a User
+
+```csharp
+var groups = await _activeDirectoryManager.GetUserGroups("USER_XX");
+
+foreach (var group in groups)
+{
+    Console.WriteLine(group);
+}
+```
+
+---
+
+## Add User to Group
+
+```csharp
+await _activeDirectoryManager.AddMember("USER_XX", "GroupB");
+```
+
+---
+
+## Remove User from Group
+
+```csharp
+_await _activeDirectoryManager.RemoveMember("USER_XX", "GroupB");
+```
+
+---
+
+## Notes
+
+- Exceptions may be thrown if:
+  - The user does not exist
+  - The group does not exist
+  - There are insufficient permissions
+- Always ensure proper exception handling in production environments.
