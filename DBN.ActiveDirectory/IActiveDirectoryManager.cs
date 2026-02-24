@@ -37,6 +37,10 @@
         /// If <c>true</c>, include the list of groups the user belongs to; 
         /// if <c>false</c>, only the user object is returned without group information.
         /// </param>
+        /// </param>
+        /// <param name="cancellationToken">
+        /// A token that can be used to cancel the operation.
+        /// </param>
         /// <returns>
         /// An <see cref="ActiveDirectoryUser"/> object representing the user if found; otherwise, <c>null</c>.
         /// </returns>
@@ -122,7 +126,7 @@
         /// the group's members. Returns an empty collection if the group has no members
         /// or does not exist.
         /// </returns>
-        Task<IEnumerable<ActiveDirectoryUser>> GetGroupMembers(string group, bool includeGroups, CancellationToken cancellationToken = default);
+        Task<IEnumerable<ActiveDirectoryUser>> GetGroupMembers(string group, bool includeGroups = true, CancellationToken cancellationToken = default);
 
         #endregion
 

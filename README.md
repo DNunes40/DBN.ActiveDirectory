@@ -37,10 +37,8 @@ Daniel Nunes
 
 ## Requirements
 
-- Windows OS
 - Uses:
-  - `System.DirectoryServices`
-  - `System.DirectoryServices.AccountManagement`
+  - `System.DirectoryServices.Protocols`
 
 > ⚠ Ensure the service account (if used) has sufficient permissions in Active Directory.
 
@@ -61,6 +59,10 @@ services.AddSingleton<IActiveDirectoryManager, ActiveDirectoryManager>();
 ## With Domain Only
 
 ```csharp
+services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("myDomain"));
+
+//OR
+
 services.AddSingleton<IActiveDirectoryManager>(provider =>
 {
     var domain = "myDomain";
@@ -81,10 +83,13 @@ services.AddSingleton<IActiveDirectoryManager>(provider =>
 
 ## With Service Account Credentials
 
-> ⚠ Do NOT hardcode credentials in production.  
-> Use configuration providers, environment variables, or secure vaults.
+> ⚠ Prefer configuration providers, environment variables, or secure vaults over hardcoding values.
 
 ```csharp
+ services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("SUHTAD.SUHT.SWEST.NHS.UK", "myServiceAccount", "myStrongPassword123!"));
+
+ //OR
+
 services.AddSingleton<IActiveDirectoryManager>(provider =>
 {
     var domain = "myDomain";
@@ -112,7 +117,7 @@ services.AddSingleton<IActiveDirectoryManager>(provider =>
 ## Search User by sAMAccountName
 
 ```csharp
-var user = await _activeDirectoryManager.FindUserBySamAccountName("USER_XX");
+var user = await _activeDirectoryManager.FindUserBySamAccountName("user_xx");
 
 if (user != null)
 {
@@ -158,7 +163,7 @@ foreach (var user in users)
 ## Validate User Password
 
 ```csharp
-bool isValid = await _activeDirectoryManager.ValidateCredentials("USER_XX", "SuperSecretPassword!");
+bool isValid = await _activeDirectoryManager.ValidateCredentials("user_xx", "SuperSecretPassword!");
 
 Console.WriteLine(isValid ? "Password is valid ✅" : "Password is invalid ❌");
 ```
@@ -168,7 +173,7 @@ Console.WriteLine(isValid ? "Password is valid ✅" : "Password is invalid ❌")
 ## Check Group Membership
 
 ```csharp
-bool isMember = await _activeDirectoryManager.IsUserMemberOfGroup("USER_XX", "GroupA");
+bool isMember = await _activeDirectoryManager.IsUserMemberOfGroup("user_xx", "GroupA");
 
 Console.WriteLine(isMember ? "User is a member." : "User is not a member.");
 ```
@@ -191,7 +196,7 @@ foreach (var member in members)
 ## Get All Groups of a User
 
 ```csharp
-var groups = await _activeDirectoryManager.GetUserGroups("USER_XX");
+var groups = await _activeDirectoryManager.GetUserGroups("user_xx");
 
 foreach (var group in groups)
 {
@@ -204,7 +209,7 @@ foreach (var group in groups)
 ## Add User to Group
 
 ```csharp
-await _activeDirectoryManager.AddMember("USER_XX", "GroupB");
+await _activeDirectoryManager.AddMember("user_xx", "GroupB");
 ```
 
 ---
@@ -212,7 +217,7 @@ await _activeDirectoryManager.AddMember("USER_XX", "GroupB");
 ## Remove User from Group
 
 ```csharp
-_await _activeDirectoryManager.RemoveMember("USER_XX", "GroupB");
+_await _activeDirectoryManager.RemoveMember("user_xx", "GroupB");
 ```
 
 ---
@@ -223,4 +228,9 @@ _await _activeDirectoryManager.RemoveMember("USER_XX", "GroupB");
   - The user does not exist
   - The group does not exist
   - There are insufficient permissions
-- Always ensure proper exception handling in production environments.
+  - Network connectivity issues occur (e.g., unable to reach the AD server).
+  - The domain controller is unavailable.
+  - Internet or VPN issues prevent access to the AD infrastructure.
+  - Configuration errors in the AD manager (wrong domain, credentials, etc.).
+
+- Always ensure proper exception handling in production environments, including logging, retry logic, and meaningful error messages.

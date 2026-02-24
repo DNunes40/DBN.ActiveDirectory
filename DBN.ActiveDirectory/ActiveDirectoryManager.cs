@@ -248,7 +248,7 @@ namespace DBN.ActiveDirectory
 
         #region Group Retrieval
 
-        public async Task<IEnumerable<ActiveDirectoryUser>> GetGroupMembers(string group, bool includeGroups, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<ActiveDirectoryUser>> GetGroupMembers(string group, bool includeGroups = true, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -398,9 +398,14 @@ namespace DBN.ActiveDirectory
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(sAMAccountName) || string.IsNullOrWhiteSpace(group))
+                if (string.IsNullOrWhiteSpace(sAMAccountName))
                 {
-                    return;
+                    throw new ArgumentNullException(nameof(sAMAccountName), "sAMAccountName cannot be null or empty.");
+                }
+
+                if (string.IsNullOrWhiteSpace(group))
+                {
+                    throw new ArgumentNullException(nameof(group), "group cannot be null or empty.");
                 }
 
                 if (await IsUserMemberOfGroup(sAMAccountName, group, cancellationToken))
@@ -443,9 +448,14 @@ namespace DBN.ActiveDirectory
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(sAMAccountName) || string.IsNullOrWhiteSpace(group))
+                if (string.IsNullOrWhiteSpace(sAMAccountName))
                 {
-                    return;
+                    throw new ArgumentNullException(nameof(sAMAccountName), "sAMAccountName cannot be null or empty.");
+                }
+
+                if (string.IsNullOrWhiteSpace(group))
+                {
+                    throw new ArgumentNullException(nameof(group), "group cannot be null or empty.");
                 }
 
                 if (!await IsUserMemberOfGroup(sAMAccountName, group, cancellationToken))

@@ -6,11 +6,10 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 	<PackageId>DBN.ActiveDirectory</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Daniel Nunes</Authors>
     <Description>This package allows any application to manage AD groups, including finding for, adding or removing users or groups.</Description>
     <PackageTags>active-directory;ad;ldap;users;groups;domain;windows-domain;authentication;authorization;dotnet;csharp</PackageTags>
-    <PackageIcon>Icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/DNunes40/DBN.ActiveDirectory</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -34,6 +33,13 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
+
+	<PropertyGroup>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);1591</NoWarn>
+		<PackageIcon>Icon.png</PackageIcon>
+		<!-- optional: suppress missing XML comments warnings -->
+	</PropertyGroup>
 
 	<Target Name="AfterPack" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release'">
 		<!-- Ensure the folder one level up exists -->
