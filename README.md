@@ -40,21 +40,7 @@ Daniel Nunes
 - Uses:
   - `System.DirectoryServices.Protocols`
 
-> ⚠ Ensure the service account (if used) has sufficient permissions in Active Directory.
-
----
-
 # Dependency Injection Setup
-
-## Default Registration
-
-Uses the application identity:
-
-```csharp
-services.AddSingleton<IActiveDirectoryManager, ActiveDirectoryManager>();
-```
-
----
 
 ## With Domain Only
 
@@ -86,7 +72,7 @@ services.AddSingleton<IActiveDirectoryManager>(provider =>
 > ⚠ Prefer configuration providers, environment variables, or secure vaults over hardcoding values.
 
 ```csharp
- services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("SUHTAD.SUHT.SWEST.NHS.UK", "myServiceAccount", "myStrongPassword123!"));
+ services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("myDomain", "myServiceAccount", "myStrongPassword123!"));
 
  //OR
 
@@ -121,7 +107,7 @@ var user = await _activeDirectoryManager.FindUserBySamAccountName("user_xx");
 
 if (user != null)
 {
-    Console.WriteLine($"{user.FirstName} {user.LastName} - {user.Email}");
+    Console.WriteLine($"{user.FirstName} {user.LastName}");
 }
 ```
 
@@ -225,8 +211,6 @@ _await _activeDirectoryManager.RemoveMember("user_xx", "GroupB");
 ## Notes
 
 - Exceptions may be thrown if:
-  - The user does not exist
-  - The group does not exist
   - There are insufficient permissions
   - Network connectivity issues occur (e.g., unable to reach the AD server).
   - The domain controller is unavailable.
