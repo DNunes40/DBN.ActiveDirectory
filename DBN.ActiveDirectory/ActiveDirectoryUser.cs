@@ -28,7 +28,7 @@
 
 
         private readonly List<string> _groups = [];
-        public IReadOnlyCollection<string> Groups => [.. _groups];
+        public IReadOnlyCollection<string> Groups => _groups.AsReadOnly();
 
         public void AddGroup(string group)
         {

@@ -19,8 +19,8 @@ namespace DBN.ActiveDirectory
 
         private bool _disposed = false;
 
-        private readonly ConcurrentDictionary<string, TimedCacheItem> _groupDnCache = new();
-        private readonly ConcurrentDictionary<string, TimedCacheItem> _userDnCache = new();
+        private readonly ConcurrentDictionary<string, TimedCacheItem> _groupDnCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, TimedCacheItem> _userDnCache = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(2);
 
@@ -882,18 +882,7 @@ namespace DBN.ActiveDirectory
         {
             if (_ldapPool.TryDequeue(out var connection))
             {
-                try
-                {
-                    // Test the connection with a simple operation
-                    connection.SendRequest(new SearchRequest(_baseDomain, "(objectClass=*)", SearchScope.Base, null));
-                    return connection;
-                }
-                catch
-                {
-                    // Connection failed; dispose and create a new one
-                    connection.Dispose();
-                    return CreateConnection();
-                }
+                return connection;
             }
 
             return CreateConnection();

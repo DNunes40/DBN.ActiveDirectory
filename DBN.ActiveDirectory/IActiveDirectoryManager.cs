@@ -37,7 +37,6 @@
         /// If <c>true</c>, include the list of groups the user belongs to; 
         /// if <c>false</c>, only the user object is returned without group information.
         /// </param>
-        /// </param>
         /// <param name="cancellationToken">
         /// A token that can be used to cancel the operation.
         /// </param>

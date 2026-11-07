@@ -1,16 +1,10 @@
 # DBN.ActiveDirectory
 
-Lightweight, production-ready LDAP-based Active Directory manager for .NET.
+Lightweight and fast Active Directory access for .NET using LDAP.
 
-`DBN.ActiveDirectory` provides a clean, async-first API for searching users, validating credentials, and managing group membership in Windows Active Directory environments.
+`DBN.ActiveDirectory` provides an async-first API for looking up users, validating credentials, checking group membership, and managing group membership in Windows Active Directory environments.
 
-It provides functionality to:
-
-- 🔍 Search users
-- 🔐 Validate credentials
-- 👥 Check group membership
-- 📋 Retrieve group members
-- ➕➖ Add or remove users from groups
+It is designed to be simple to register in DI, easy to call from application services, and efficient enough for common enterprise identity workflows.
 
 ---
 
@@ -18,171 +12,176 @@ It provides functionality to:
 
 - Search users by:
   - `sAMAccountName`
-  - Email
-  - First and/or last name
-- Validate user credentials
-- Check if a user belongs to a specific group
-- Retrieve members of a specific group
-- Retrieve all groups a user belongs to
-- Add and remove users from groups
+  - email address
+  - first and/or last name
+- Validate credentials by performing an LDAP bind
+- Check whether a user belongs to a specific AD group
+- Retrieve a user’s direct group names
+- Retrieve group members
+- Add and remove a user from a group
+- Built on `System.DirectoryServices.Protocols`
 
 ---
 
-## Created by
+## Installation
 
-Daniel Nunes  
-📧 dbnunesg40@hotmail.com
+Install the package from NuGet:
+
+```bash
+dotnet add package DBN.ActiveDirectory
+```
+
+Or via Package Manager:
+
+```powershell
+Install-Package DBN.ActiveDirectory
+```
 
 ---
 
 ## Requirements
 
-- Uses:
-  - `System.DirectoryServices.Protocols`
-
-# Dependency Injection Setup
-
-## With Domain Only
-
-```csharp
-services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("myDomain"));
-
-//OR
-
-services.AddSingleton<IActiveDirectoryManager>(provider =>
-{
-    var domain = "myDomain";
-    return new ActiveDirectoryManager(domain);
-});
-
-//OR
-
-services.AddSingleton<IActiveDirectoryManager>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var domain = configuration["ActiveDirectory:Domain"];
-    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
-});
-```
+- .NET 8+
+- Access to a Windows Active Directory / LDAP endpoint
+- A valid domain name, and optionally a service account with permissions to query or manage groups
+- Because the library uses LDAP, the host machine must be able to reach the domain controller or infrastructure that exposes LDAP
 
 ---
 
-## With Service Account Credentials
+## Registering in DI
 
-> ⚠ Prefer configuration providers, environment variables, or secure vaults over hardcoding values.
+### 1) Domain only
+
+Use this when the app is running under a user context that already has permission to query AD.
 
 ```csharp
- services.AddSingleton<IActiveDirectoryManager>(provider => new ActiveDirectoryManager("myDomain", "myServiceAccount", "myStrongPassword123!"));
+using DBN.ActiveDirectory;
+using Microsoft.Extensions.DependencyInjection;
 
- //OR
+var services = new ServiceCollection();
 
-services.AddSingleton<IActiveDirectoryManager>(provider =>
+services.AddSingleton<IActiveDirectoryManager>(_ =>
+    new ActiveDirectoryManager("example.com"));
+
+var provider = services.BuildServiceProvider();
+var activeDirectory = provider.GetRequiredService<IActiveDirectoryManager>();
+```
+
+### 2) With a service account
+
+Use this when the app needs explicit credentials for LDAP access.
+
+```csharp
+using DBN.ActiveDirectory;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+
+services.AddSingleton<IActiveDirectoryManager>(_ =>
+    new ActiveDirectoryManager(
+        "example.com",
+        "MYDOMAIN\\svc-ad-reader",
+        "SuperStrongPassword!"));
+
+var provider = services.BuildServiceProvider();
+var activeDirectory = provider.GetRequiredService<IActiveDirectoryManager>();
+```
+
+### 3) From configuration
+
+```csharp
+using DBN.ActiveDirectory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+var services = new ServiceCollection();
+
+services.AddSingleton<IActiveDirectoryManager>(_ =>
 {
-    var domain = "myDomain";
-    var serviceAccount = "myServiceAccount";
-    var accountPassword = "myStrongPassword123!";
-    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
-});
-
-//OR
-
-services.AddSingleton<IActiveDirectoryManager>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
     var domain = configuration["ActiveDirectory:Domain"];
     var serviceAccount = configuration["ActiveDirectory:ServiceAccount"];
-    var accountPassword = configuration["ActiveDirectory:Password"];
-    return new ActiveDirectoryManager(domain, serviceAccount, accountPassword);
+    var password = configuration["ActiveDirectory:Password"];
+
+    return new ActiveDirectoryManager(domain!, serviceAccount, password);
 });
 ```
 
+Example `appsettings.json`:
+
+```json
+{
+  "ActiveDirectory": {
+    "Domain": "example.com",
+    "ServiceAccount": "MYDOMAIN\\svc-ad-reader",
+    "Password": "********"
+  }
+}
+```
+
+> Prefer storing credentials in environment variables, a secret store, or a secure configuration provider. Avoid hardcoding secrets in source code.
+
 ---
 
-# Usage Examples
+## Basic usage examples
 
-## Search User by sAMAccountName
+### Search by `sAMAccountName`
 
 ```csharp
-var user = await _activeDirectoryManager.FindUserBySamAccountName("user_xx");
+var user = await activeDirectory.FindUserBySamAccountName("jdoe");
 
-if (user != null)
+if (user is not null)
+{
+    Console.WriteLine($"User: {user.DisplayName}");
+    Console.WriteLine($"Email: {user.Email}");
+    Console.WriteLine($"Enabled: {user.IsEnabled}");
+}
+else
+{
+    Console.WriteLine("User not found.");
+}
+```
+
+### Search by email
+
+```csharp
+var user = await activeDirectory.FindUserByEmail("jdoe@example.com");
+
+if (user is not null)
 {
     Console.WriteLine($"{user.FirstName} {user.LastName}");
 }
 ```
 
----
-
-## Search User by Email
+### Search by first and/or last name
 
 ```csharp
-var user = await _activeDirectoryManager.FindUserByEmail("user_xx@email.com");
-
-if (user != null)
-{
-    Console.WriteLine($"{user.FirstName} {user.LastName}");
-}
-```
-
----
-
-## Search Users by Name
-
-```csharp
-// By first name
-var users = await _activeDirectoryManager.FindUserByName(firstName: "John");
-
-// By last name
-var users = await _activeDirectoryManager.FindUserByName(lastName: "Smith");
-
-// By first and last name
-var users = await _activeDirectoryManager.FindUserByName("John", "Smith");
+var users = await activeDirectory.FindUserByName(firstName: "John");
 
 foreach (var user in users)
 {
-    Console.WriteLine($"{user.FirstName} {user.LastName}");
+    Console.WriteLine($"{user.SamAccountName} - {user.DisplayName}");
 }
+
+var usersByFullName = await activeDirectory.FindUserByName("John", "Smith");
 ```
 
----
-
-## Validate User Password
+### Validate credentials
 
 ```csharp
-bool isValid = await _activeDirectoryManager.ValidateCredentials("user_xx", "SuperSecretPassword!");
+var isValid = await activeDirectory.ValidateCredentials("jdoe", "MyPassword123!");
 
-Console.WriteLine(isValid ? "Password is valid ✅" : "Password is invalid ❌");
+Console.WriteLine(isValid ? "Credentials are valid." : "Credentials are invalid.");
 ```
 
----
-
-## Check Group Membership
+### Get user groups
 
 ```csharp
-bool isMember = await _activeDirectoryManager.IsUserMemberOfGroup("user_xx", "GroupA");
-
-Console.WriteLine(isMember ? "User is a member." : "User is not a member.");
-```
-
----
-
-## Retrieve Members of a Group
-
-```csharp
-var members = await _activeDirectoryManager.GetGroupMembers("GroupA");
-
-foreach (var member in members)
-{
-    Console.WriteLine($"{member.FirstName} {member.LastName}");
-}
-```
-
----
-
-## Get All Groups of a User
-
-```csharp
-var groups = await _activeDirectoryManager.GetUserGroups("user_xx");
+var groups = await activeDirectory.GetUserGroups("jdoe");
 
 foreach (var group in groups)
 {
@@ -190,31 +189,103 @@ foreach (var group in groups)
 }
 ```
 
----
-
-## Add User to Group
+### Check whether a user is in a group
 
 ```csharp
-await _activeDirectoryManager.AddMember("user_xx", "GroupB");
+var isMember = await activeDirectory.IsUserMemberOfGroup("jdoe", "Developers");
+
+Console.WriteLine(isMember ? "User is a member of Developers." : "User is not a member.");
+```
+
+### Get all members of a group
+
+```csharp
+var members = await activeDirectory.GetGroupMembers("Developers");
+
+foreach (var member in members)
+{
+    Console.WriteLine($"{member.SamAccountName} - {member.DisplayName}");
+}
+```
+
+### Add a user to a group
+
+```csharp
+await activeDirectory.AddMember("jdoe", "Developers");
+Console.WriteLine("User added to Developers.");
+```
+
+### Remove a user from a group
+
+```csharp
+await activeDirectory.RemoveMember("jdoe", "Developers");
+Console.WriteLine("User removed from Developers.");
 ```
 
 ---
 
-## Remove User from Group
+## User model
+
+The library returns `ActiveDirectoryUser` objects with the following common properties:
 
 ```csharp
-_await _activeDirectoryManager.RemoveMember("user_xx", "GroupB");
+public class ActiveDirectoryUser
+{
+    public string SamAccountName { get; set; }
+    public string? DisplayName { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? Title { get; set; }
+    public string? Department { get; set; }
+    public string? EmployeeNumber { get; set; }
+    public DateTime? AccountExpirationDate { get; set; }
+    public DateTime? CreatedDate { get; set; }
+    public DateTime? ModifiedDate { get; set; }
+    public DateTime? LastLogonDate { get; set; }
+    public bool IsEnabled { get; set; }
+    public IReadOnlyCollection<string> Groups { get; }
+}
+```
+
+When `includeGroups` is `true`, the returned user will also include the direct group memberships available from the LDAP `memberOf` attribute.
+
+---
+
+## Error handling
+
+This library throws `ActiveDirectoryManagerException` for operational and LDAP failures, and it may also throw `OperationCanceledException` if a cancellation token is triggered.
+
+```csharp
+try
+{
+    var user = await activeDirectory.FindUserBySamAccountName("jdoe");
+}
+catch (ActiveDirectoryManagerException ex)
+{
+    Console.WriteLine($"AD error: {ex.Message}");
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Request cancelled.");
+}
 ```
 
 ---
 
-## Notes
+## Notes and recommendations
 
-- Exceptions may be thrown if:
-  - There are insufficient permissions
-  - Network connectivity issues occur (e.g., unable to reach the AD server).
-  - The domain controller is unavailable.
-  - Internet or VPN issues prevent access to the AD infrastructure.
-  - Configuration errors in the AD manager (wrong domain, credentials, etc.).
+- The library is built for Windows domain environments and Active Directory LDAP access.
+- Access rights matter: some operations require permissions to read group membership or modify group membership.
+- Domain controller connectivity, network restrictions, DNS, VPN, and permissions are common causes of runtime failures.
+- Use cancellation tokens for long-running operations and avoid blocking calls in ASP.NET workloads.
+- Prefer storing secret values in secure configuration providers such as environment variables or user secrets.
 
-- Always ensure proper exception handling in production environments, including logging, retry logic, and meaningful error messages.
+---
+
+## Authors
+
+Daniel Nunes  
+📧 dbnunesg40@hotmail.com
+
